@@ -26,15 +26,27 @@
     learnedMax: 0,       // 학습에서 마지막으로 본 사건 순번(진행도)
     orderDone: false,    // 순서 맞추기 완료 여부
     orderScore: 0,       // 순서 맞추기 맞힌 개수
-    reviewIndex: 0,      // 복습 현재 문항
+    reviewPool: REVIEW_QUIZ.slice(), // 현재 복습 세션에서 풀 문제들
+    reviewIsRetry: false,            // 틀린 문제만 다시 푸는 세션인지
+    reviewIndex: 0,      // 복습 현재 문항(풀 내 위치)
     reviewScore: 0,      // 복습 맞힌 개수
     reviewAnswered: {},  // index -> 선택값
   };
 
+  // 복습 세션 시작(pool: 풀 문제 배열, isRetry: 틀린문제 재도전 여부)
+  function startReview(pool, isRetry) {
+    state.reviewPool = pool;
+    state.reviewIsRetry = !!isRetry;
+    state.reviewIndex = 0;
+    state.reviewScore = 0;
+    state.reviewAnswered = {};
+    go("review");
+  }
+
   const STEPS = [
-    { key: "learn", label: "① 지도 학습", emoji: "🗺️" },
-    { key: "order", label: "② 순서 맞추기", emoji: "🔢" },
-    { key: "review", label: "③ 복습 문제", emoji: "📝" },
+    { key: "learn", label: "지도 조사", emoji: "🗺️" },
+    { key: "order", label: "순서 복원", emoji: "📋" },
+    { key: "review", label: "복습 점검", emoji: "📝" },
   ];
 
   /* ---------------- 유틸 ---------------- */
@@ -125,8 +137,8 @@
       stepNav.appendChild(pill);
     });
 
-    // 점수: 복습 진행 중일 때 의미 있음
-    const total = REVIEW_QUIZ.length;
+    // 점수: 복습 진행 중일 때 의미 있음(현재 세션 풀 기준)
+    const total = state.reviewPool.length;
     scoreValue.textContent = state.reviewScore;
     scoreMax.textContent = "/" + total;
     scoreBadge.style.visibility =
@@ -144,57 +156,56 @@
      홈
      ============================================================ */
   function renderHome() {
-    const shell = el("div", { class: "app-shell" });
+    const shell = el("div", { class: "home" });
 
-    const hero = el("section", { class: "hero" }, [
-      el("span", { class: "hero-eyebrow" }, "중학교 2학년 세계사 · 지수쌤 역사 교실"),
+    const hero = el("section", { class: "hero-brief" }, [
+      el("p", { class: "hero-kicker" }, "작전 브리핑 · 중학교 2학년 세계사"),
       el("h1", { class: "home-title" }, [
-        "지도로 떠나는 ",
-        el("span", { class: "home-title-accent" }, "제2차 세계대전"),
-        " 탐험",
+        "세계지도로 보는 ",
+        el("span", { class: "u" }, "제2차 세계대전"),
       ]),
-      el("p", { class: "hero-desc" },
-        "세계 지도 위에서 주요 사건을 순서대로 따라가며 배우고, 사건의 순서를 맞춰보고, 복습 문제로 확인해요."),
+      el("p", { class: "hero-desc" }, [
+        "작전 지도실의 지도 요원이 되어 세계지도 위 주요 전장을 순서대로 조사하고,",
+        el("br", {}),
+        "사건의 순서를 복원한 뒤, 복습 임무로 기억을 점검해요.",
+      ]),
       el("div", { class: "hero-cta" }, [
         el("button", { class: "btn btn-lg", type: "button", onclick: () => go("learn") },
-          "🗺️ 지도로 학습 시작하기"),
-        el("button", { class: "btn btn-ghost", type: "button", onclick: () => go("order") },
-          "바로 퀴즈 풀기"),
+          "지도 조사 시작"),
+        el("button", { class: "btn btn-ghost btn-lg", type: "button", onclick: () => go("order") },
+          "순서 복원 바로가기"),
       ]),
     ]);
 
-    const flow = el("div", { class: "flow-steps" }, [
-      flowStep(1, "🗺️", "지도 학습", "세계 지도 위 번호를 따라 8개 사건을 순서대로 배워요."),
-      flowStep(2, "🔢", "순서 맞추기", "뒤섞인 사건에 올바른 순번을 골라 흐름을 완성해요."),
-      flowStep(3, "📝", "복습 문제", "객관식·OX 문제로 핵심 내용을 확인해요."),
+    const ops = el("div", { class: "ops-grid" }, [
+      opsCard("임무 01", "지도 조사", "세계지도의 번호 핀을 따라 8개 전장을 시간 순서대로 조사해요."),
+      opsCard("임무 02", "순서 복원", "뒤섞인 작전 보고서에 올바른 순번을 매겨 전쟁의 흐름을 복원해요."),
+      opsCard("임무 03", "복습 점검", "객관식·OX 문제로 핵심 정보를 다시 점검해요."),
     ]);
 
-    // 미니 지도 미리보기
-    const mapFrame = el("div", { class: "home-map-frame" }, [
+    const mapWrap = el("div", { class: "home-map-wrap" }, [
       el("div", { class: "osm-map", id: "homeMap" }),
     ]);
 
     shell.appendChild(hero);
-    shell.appendChild(el("h2", { class: "section-heading" }, "이렇게 공부해요"));
-    shell.appendChild(flow);
-    shell.appendChild(el("h2", { class: "section-heading" }, "주요 사건이 일어난 곳"));
-    shell.appendChild(mapFrame);
-    shell.appendChild(el("p", { class: "home-map-hint" }, "💡 번호를 따라가면 전쟁의 흐름이 보여요. 학습을 시작하면 사건 설명을 볼 수 있어요."));
+    shell.appendChild(el("h2", { class: "section-title" }, "작전 순서"));
+    shell.appendChild(ops);
+    shell.appendChild(el("h2", { class: "section-title" }, "전장 지도"));
+    shell.appendChild(mapWrap);
+    shell.appendChild(el("p", { class: "home-map-hint" }, "핀 번호를 따라가면 전쟁의 흐름이 보입니다 · 조사를 시작하면 상세 브리핑이 열립니다"));
     stage.appendChild(shell);
 
-    // 지도 렌더(미리보기: 클릭하면 학습으로 이동)
     setTimeout(() => {
       const m = WAR_MAP.build(document.getElementById("homeMap"), SORTED, () => go("learn"));
       m.map.dragging.disable();
     }, 0);
   }
 
-  function flowStep(num, emoji, title, desc) {
-    return el("div", { class: "flow-step" }, [
-      el("span", { class: "flow-step-num" }, String(num)),
-      el("div", { class: "flow-step-emoji", "aria-hidden": "true" }, emoji),
-      el("p", { class: "flow-step-title" }, title),
-      el("p", { class: "flow-step-desc" }, desc),
+  function opsCard(step, title, desc) {
+    return el("div", { class: "ops-card" }, [
+      el("span", { class: "ops-step" }, step),
+      el("p", { class: "ops-card-title" }, title),
+      el("p", { class: "ops-card-desc" }, desc),
     ]);
   }
 
@@ -205,19 +216,19 @@
   let currentLearnId = null;
 
   function renderLearn() {
-    const shell = el("div", { class: "app-shell" });
+    const shell = el("div", { class: "wrap" });
 
     shell.appendChild(el("div", { class: "page-top" }, [
-      el("button", { class: "back-link", type: "button", onclick: () => go("home") }, "← 홈"),
-      el("h1", { class: "map-panel-title", style: "font-size:1.4rem;margin:0;" }, "🗺️ 지도로 배우는 전쟁의 흐름"),
+      el("button", { class: "back-link", type: "button", onclick: () => go("home") }, "← 지도실"),
+      el("h1", { class: "stage-title" }, "전장 지도 조사"),
     ]));
 
     const layout = el("div", { class: "learn-layout" }, [
-      el("div", { class: "map-col" }, [
-        el("div", { class: "map-frame" }, [el("div", { class: "osm-map", id: "learnMap" })]),
-        el("p", { class: "map-guide" }, "지도의 번호 핀을 누르면 그 사건을 배울 수 있어요. 또는 아래 ‹ › 버튼으로 순서대로 넘겨보세요."),
+      el("div", { class: "map-panel" }, [
+        el("div", { class: "osm-map", id: "learnMap" }),
+        el("p", { class: "map-guide" }, "지도의 번호 핀을 누르거나 ‹ › 버튼으로 순서대로 조사하세요"),
       ]),
-      el("div", { class: "panel-col", id: "eventPanel" }),
+      el("div", { class: "brief-col", id: "eventPanel" }),
     ]);
     shell.appendChild(layout);
     stage.appendChild(shell);
@@ -250,44 +261,38 @@
     const next = idx < SORTED.length - 1 ? SORTED[idx + 1] : null;
     const isLast = idx === SORTED.length - 1;
 
-    const banner = el("div", { class: "event-banner", style: "background:" + ev.color + ";" }, [
-      el("span", { class: "event-order" }, String(ev.order)),
-      el("span", { class: "event-banner-emoji", "aria-hidden": "true" }, ev.emoji),
-      el("div", { class: "event-banner-text" }, [
-        el("h2", {}, ev.title),
-        el("p", { class: "event-banner-meta" }, ev.year + "년 · " + ev.place),
+    const head = el("div", { class: "brief-head", style: "background:" + ev.color + ";" }, [
+      el("span", { class: "brief-no" }, String(ev.order)),
+      el("span", { class: "event-banner-emoji", "aria-hidden": "true", style: "font-size:2.4rem;" }, ev.emoji),
+      el("div", { class: "brief-head-txt" }, [
+        el("h2", { class: "event-title" }, ev.title),
+        el("p", { class: "brief-head-meta" }, ev.year + " · " + ev.place),
       ]),
     ]);
 
-    const body = el("div", { class: "event-body" });
-    body.appendChild(el("p", { class: "event-summary" }, ev.summary));
-    ev.body.forEach((p) => body.appendChild(el("p", { class: "event-para" }, p)));
-    body.appendChild(el("p", { class: "event-points-title" }, "🔑 핵심 포인트"));
-    const ul = el("ul", { class: "event-points" });
+    const body = el("div", { class: "brief-body" });
+    body.appendChild(el("p", { class: "brief-summary" }, ev.summary));
+    ev.body.forEach((p) => body.appendChild(el("p", { class: "brief-para" }, p)));
+    body.appendChild(el("p", { class: "brief-points-title" }, "핵심 정보"));
+    const ul = el("ul", { class: "brief-points" });
     ev.points.forEach((pt) => ul.appendChild(el("li", {}, el("span", {}, pt))));
     body.appendChild(ul);
 
-    const nav = el("div", { class: "event-nav" }, [
+    const nav = el("div", { class: "brief-nav" }, [
       el("button", {
         class: "back-link",
         type: "button",
         disabled: !prev,
         onclick: () => prev && selectEvent(prev.id),
       }, "‹ 이전"),
-      el("span", { class: "event-counter" }, (idx + 1) + " / " + SORTED.length),
+      el("span", { class: "brief-counter" }, (idx + 1) + " / " + SORTED.length),
       isLast
-        ? el("button", { class: "btn btn-primary", type: "button", onclick: () => go("order") }, "순서 맞추기 →")
-        : el("button", { class: "btn btn-info", type: "button", onclick: () => next && selectEvent(next.id) }, "다음 ›"),
+        ? el("button", { class: "btn btn-rust", type: "button", onclick: () => go("order") }, "순서 복원 →")
+        : el("button", { class: "btn btn-navy", type: "button", onclick: () => next && selectEvent(next.id) }, "다음 ›"),
     ]);
 
-    const panelCard = el("div", { class: "event-panel" }, [banner, body, nav]);
+    const panelCard = el("div", { class: "brief" }, [head, body, nav]);
     panel.appendChild(panelCard);
-
-    if (isLast) {
-      panel.appendChild(el("div", { class: "learn-done" }, [
-        el("p", { class: "home-map-hint", style: "margin-bottom:8px;" }, "🎉 모든 사건을 살펴봤어요! 이제 순서를 맞춰볼까요?"),
-      ]));
-    }
   }
 
   /* ============================================================
@@ -299,14 +304,14 @@
     if (!orderShuffled) {
       orderShuffled = shuffle(ORDER_QUIZ.itemIds).map((id) => EVENT_BY_ID[id]);
     }
-    const shell = el("div", { class: "app-shell" });
+    const shell = el("div", { class: "wrap" });
 
     shell.appendChild(el("div", { class: "page-top" }, [
-      el("button", { class: "back-link", type: "button", onclick: () => go("learn") }, "← 학습으로"),
+      el("button", { class: "back-link", type: "button", onclick: () => go("learn") }, "← 지도 조사"),
     ]));
 
     shell.appendChild(el("div", { class: "quiz-head" }, [
-      el("h2", {}, "🔢 " + ORDER_QUIZ.title),
+      el("h2", {}, ORDER_QUIZ.title),
       el("p", {}, ORDER_QUIZ.instruction),
     ]));
 
@@ -342,18 +347,10 @@
     shell.appendChild(feedback);
 
     shell.appendChild(el("div", { class: "quiz-actions" }, [
-      el("button", { class: "btn btn-ghost", type: "button", onclick: resetOrder }, "다시 섞기"),
-      el("button", { class: "btn", type: "button", id: "orderCheckBtn", onclick: checkOrder }, "채점하기 ✔"),
+      el("button", { class: "btn", type: "button", id: "orderCheckBtn", onclick: checkOrder }, "채점하기"),
     ]));
 
     stage.appendChild(shell);
-  }
-
-  function resetOrder() {
-    orderShuffled = shuffle(ORDER_QUIZ.itemIds).map((id) => EVENT_BY_ID[id]);
-    state.orderDone = false;
-    clear(stage);
-    renderOrder();
   }
 
   function checkOrder() {
@@ -396,16 +393,16 @@
     clear(fb);
     const perfect = correct === total;
     const box = el("div", { class: "order-feedback " + (perfect ? "good" : "bad") }, [
-      el("h3", {}, perfect ? "🎉 완벽해요! 모든 순서를 맞혔어요." : "🤔 " + total + "개 중 " + correct + "개 맞았어요."),
+      el("h3", {}, perfect ? "작전 순서 복원 완료!" : total + "개 중 " + correct + "개 일치"),
       el("p", {}, perfect
-        ? "전쟁의 흐름을 정확히 이해했네요. 이제 복습 문제로 마무리해요!"
-        : (dup ? "같은 번호를 두 번 쓴 곳이 있어요. 번호가 겹치지 않게 다시 골라보세요." : "빨간 카드의 순서를 바꿔서 다시 채점해 보세요.")),
+        ? "전쟁의 흐름을 정확히 복원했어요. 이제 복습 임무로 마무리해요!"
+        : (dup ? "같은 번호를 두 번 쓴 곳이 있어요. 번호가 겹치지 않게 다시 골라보세요." : "빨간 줄로 표시된 보고서의 순서를 바꿔 다시 채점해 보세요.")),
     ]);
     fb.appendChild(box);
 
     if (perfect) {
-      box.appendChild(el("div", { style: "margin-top:12px;text-align:center;" }, [
-        el("button", { class: "btn btn-primary", type: "button", onclick: () => go("review") }, "복습 문제 풀기 →"),
+      box.appendChild(el("div", { style: "margin-top:14px;text-align:center;" }, [
+        el("button", { class: "btn btn-rust", type: "button", onclick: () => go("review") }, "복습 임무 →"),
       ]));
       toast("순서 완성! 잘했어요 🎉", "good");
     } else {
@@ -417,25 +414,29 @@
      복습 퀴즈 (객관식 / OX)
      ============================================================ */
   function renderReview() {
+    const pool = state.reviewPool;
     const idx = state.reviewIndex;
-    const q = REVIEW_QUIZ[idx];
-    const total = REVIEW_QUIZ.length;
-    const shell = el("div", { class: "app-shell" });
+    const q = pool[idx];
+    const total = pool.length;
+    const shell = el("div", { class: "wrap" });
 
     shell.appendChild(el("div", { class: "page-top" }, [
-      el("button", { class: "back-link", type: "button", onclick: () => go("order") }, "← 순서 맞추기"),
+      el("button", { class: "back-link", type: "button", onclick: () => go("order") }, "← 순서 복원"),
+      state.reviewIsRetry
+        ? el("span", { class: "retry-tag" }, "틀린 문제 다시 풀기")
+        : null,
     ]));
 
     shell.appendChild(el("div", { class: "quiz-top" }, [
-      el("span", { class: "quiz-progress-text" }, "문제 " + (idx + 1) + " / " + total),
-      el("span", { class: "quiz-score" }, "⭐ " + state.reviewScore + "점"),
+      el("span", { class: "quiz-progress-text" }, "임무 " + (idx + 1) + " / " + total),
+      el("span", { class: "quiz-score" }, "점수 " + state.reviewScore),
     ]));
 
     const answered = Object.prototype.hasOwnProperty.call(state.reviewAnswered, idx);
     const picked = state.reviewAnswered[idx];
 
-    const card = el("div", { class: "card question-card" }, [
-      el("span", { class: "question-type-tag" }, q.type === "ox" ? "O / X" : "객관식"),
+    const card = el("div", { class: "question-card" }, [
+      el("span", { class: "question-type-tag" + (q.type === "ox" ? " ox" : "") }, q.type === "ox" ? "O / X" : "객관식"),
       el("h2", { class: "question-text" }, q.question),
       buildChoices(q, idx, answered, picked),
     ]);
@@ -446,7 +447,7 @@
       const isCorrect = checkAnswer(q, picked);
       shell.appendChild(el("div", { class: "feedback " + (isCorrect ? "good" : "bad") }, [
         el("p", { class: "feedback-head" }, [
-          el("span", { "aria-hidden": "true" }, isCorrect ? "✅" : "❌"),
+          el("span", { "aria-hidden": "true" }, isCorrect ? "✔" : "✕"),
           isCorrect ? "정답이에요!" : "아쉬워요, 다시 확인해요.",
         ]),
         el("p", { class: "feedback-text" }, q.explain),
@@ -460,8 +461,8 @@
         : null,
       answered
         ? (isLast
-            ? el("button", { class: "btn btn-primary", type: "button", onclick: () => go("result") }, "결과 보기 🏁")
-            : el("button", { class: "btn", type: "button", onclick: () => { state.reviewIndex++; go("review"); } }, "다음 ›"))
+            ? el("button", { class: "btn btn-rust", type: "button", onclick: () => go("result") }, "결과 보기")
+            : el("button", { class: "btn btn-navy", type: "button", onclick: () => { state.reviewIndex++; go("review"); } }, "다음 ›"))
         : null,
     ]);
     shell.appendChild(nav);
@@ -472,7 +473,7 @@
   function buildChoices(q, idx, answered, picked) {
     if (q.type === "ox") {
       const wrap = el("div", { class: "choices ox-choices" });
-      [{ label: "⭕ 맞아요", val: true }, { label: "❌ 아니에요", val: false }].forEach((opt) => {
+      [{ label: "O 맞아요", val: true }, { label: "X 아니에요", val: false }].forEach((opt) => {
         wrap.appendChild(oxOrMcqButton(q, idx, answered, picked, opt.val, opt.label, true));
       });
       return wrap;
@@ -514,13 +515,13 @@
   function answerReview(idx, value) {
     if (Object.prototype.hasOwnProperty.call(state.reviewAnswered, idx)) return;
     state.reviewAnswered[idx] = value;
-    const q = REVIEW_QUIZ[idx];
+    const q = state.reviewPool[idx];
     const correct = checkAnswer(q, value);
     if (correct) {
       state.reviewScore++;
-      toast("정답! 🎉", "good");
+      toast("정답!", "good");
     } else {
-      toast("아쉬워요 😅", "bad");
+      toast("오답", "bad");
     }
     renderChrome();
     go("review");
@@ -530,52 +531,56 @@
      결과
      ============================================================ */
   function renderResult() {
-    const total = REVIEW_QUIZ.length;
+    const pool = state.reviewPool;
+    const total = pool.length;
     const score = state.reviewScore;
-    const ratio = score / total;
-    const shell = el("div", { class: "app-shell" });
+    const ratio = total ? score / total : 0;
+    const shell = el("div", { class: "wrap" });
 
-    let emoji, title, msg, stars;
+    // 이번 세션에서 틀린 문제 모으기
+    const wrong = pool.filter((q, i) => !checkAnswer(q, state.reviewAnswered[i]));
+
+    let stamp, emoji, title, msg, rank;
     if (ratio === 1) {
-      emoji = "🏆"; title = "완벽한 전쟁사 박사!"; stars = 3;
-      msg = "모든 문제를 맞혔어요. 제2차 세계대전의 흐름을 완벽하게 이해했네요!";
+      stamp = "S"; emoji = "🗺️"; title = "최고 사령관"; rank = 3;
+      msg = "모든 임무를 완수했어요. 제2차 세계대전의 흐름을 완벽하게 이해했네요!";
     } else if (ratio >= 0.6) {
-      emoji = "🎖️"; title = "훌륭한 역사 탐험가!"; stars = 2;
-      msg = "대부분의 내용을 잘 이해했어요. 틀린 문제를 한 번 더 복습해 보면 완벽해질 거예요.";
+      stamp = "A"; emoji = "🧭"; title = "우수 지도 요원"; rank = 2;
+      msg = "대부분의 임무를 잘 수행했어요. 틀린 문제를 한 번 더 점검하면 완벽해질 거예요.";
     } else {
-      emoji = "📚"; title = "한 번 더 도전해요!"; stars = 1;
-      msg = "지도 학습을 다시 보고 오면 훨씬 쉬워져요. 포기하지 말고 다시 도전!";
+      stamp = "B"; emoji = "📻"; title = "훈련 중인 요원"; rank = 1;
+      msg = "지도 조사를 다시 하고 오면 훨씬 쉬워져요. 포기하지 말고 다시 도전!";
     }
 
-    const starRow = el("div", { class: "result-stars", "aria-label": "별 " + stars + "개 / 3개" });
+    const ribbons = el("div", { class: "result-ribbons", "aria-label": "등급 " + rank + " / 3" });
     for (let i = 1; i <= 3; i++) {
-      starRow.appendChild(el("span", { class: "star" + (i <= stars ? " on" : ""), "aria-hidden": "true" }, "★"));
+      ribbons.appendChild(el("span", { class: "result-ribbon" + (i <= rank ? " on" : ""), "aria-hidden": "true" }, i <= rank ? "★" : "☆"));
     }
 
     shell.appendChild(el("div", { class: "result" }, [
+      el("div", { class: "result-stamp", "aria-hidden": "true" }, "RANK " + stamp),
       el("div", { class: "result-emoji", "aria-hidden": "true" }, emoji),
-      el("h2", {}, title),
-      starRow,
+      el("h2", { class: "result-title" }, title),
+      ribbons,
       el("p", { class: "result-score" }, [
         "복습 점수 ",
-        el("span", { class: "result-score-num" }, score + " / " + total),
+        el("span", { class: "num" }, score + " / " + total),
       ]),
       el("p", { class: "result-msg" }, msg),
       el("div", { class: "result-actions" }, [
-        el("button", { class: "btn btn-info", type: "button", onclick: () => { go("learn"); } }, "🗺️ 지도 다시 보기"),
-        el("button", { class: "btn btn-ghost", type: "button", onclick: restartReview }, "📝 복습 다시 풀기"),
-        el("button", { class: "btn", type: "button", onclick: () => go("home") }, "🏠 처음으로"),
+        wrong.length > 0
+          ? el("button", {
+              class: "btn btn-rust", type: "button",
+              onclick: () => startReview(wrong.slice(), true),
+            }, "틀린 문제 다시 풀기 (" + wrong.length + ")")
+          : null,
+        el("button", { class: "btn btn-navy", type: "button", onclick: () => go("learn") }, "지도 다시 조사"),
+        el("button", { class: "btn btn-ghost", type: "button", onclick: () => startReview(REVIEW_QUIZ.slice(), false) }, "전체 복습 다시"),
+        el("button", { class: "btn btn-ghost", type: "button", onclick: () => go("home") }, "지도실로"),
       ]),
     ]));
 
     stage.appendChild(shell);
-  }
-
-  function restartReview() {
-    state.reviewIndex = 0;
-    state.reviewScore = 0;
-    state.reviewAnswered = {};
-    go("review");
   }
 
   /* ---------------- 시작 ---------------- */

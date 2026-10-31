@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-  <meta name="theme-color" content="#0d1230" />
-  <meta name="description" content="중학교 2학년을 위한 제2차 세계대전 학습 웹앱 — 지도로 배우고, 순서를 맞추고, 복습해요." />
-  <title>지수쌤과 함께하는 제2차 세계대전 탐험</title>
+  <meta name="theme-color" content="#e9e0cc" />
+  <meta name="description" content="중학교 2학년을 위한 제2차 세계대전 학습 웹앱 — 세계지도로 배우고, 순서를 맞추고, 복습해요." />
+  <title>세계지도로 보는 제2차 세계대전 · 지수쌤 작전 지도실</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,16 +20,16 @@
 <body>
   <a href="#stage" class="skip-link">본문 바로가기</a>
 
-  <!-- 상단 진행 바 -->
+  <!-- 상단 바 -->
   <header class="topbar" id="topbar" hidden>
-    <div class="topbar-inner app-shell">
+    <div class="topbar-inner">
       <button class="topbar-brand" id="homeBtn" type="button" title="처음으로">
-        <span class="topbar-logo" aria-hidden="true">🎖️</span>
-        <span class="topbar-name">지수쌤과 제2차 세계대전</span>
+        <span class="topbar-logo" aria-hidden="true">🗺️</span>
+        <span class="topbar-name">작전 지도실 · 제2차 세계대전</span>
       </button>
       <nav class="steps" id="stepNav" aria-label="학습 진행 단계"></nav>
       <div class="score-badge" id="scoreBadge" title="맞힌 개수">
-        <span class="score-star" aria-hidden="true">⭐</span>
+        <span class="score-ico" aria-hidden="true">✔</span>
         <span id="scoreValue">0</span><span class="score-max" id="scoreMax">/0</span>
       </div>
     </div>
@@ -43,7 +43,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <!-- 하단 공통 문구 -->
-  <footer class="site-footer">🎖️ 제2차 세계대전 탐험 · 지수쌤 역사 교실</footer>
+  <footer class="site-footer"><span aria-hidden="true">🗺️</span> 제2차 세계대전 작전 지도실 · 지수쌤 역사 교실</footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

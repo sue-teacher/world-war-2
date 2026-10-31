@@ -15,7 +15,7 @@ const WAR_MAP = {
   /* 번호가 들어간 핀 모양 DivIcon 생성 */
   _numberIcon(order, color, active) {
     const size = active ? 44 : 36;
-    const ring = active ? "box-shadow:0 0 0 6px rgba(255,209,102,0.35);" : "";
+    const ring = active ? "box-shadow:0 0 0 6px rgba(162,59,46,0.35);" : "";
     return L.divIcon({
       className: "war-pin",
       html:
@@ -40,15 +40,27 @@ const WAR_MAP = {
      반환: { map, focus(id), setActive(id), markers } */
   build(container, events, onSelect) {
     const map = L.map(container, {
-      center: [38, 20],
-      zoom: 3,
+      center: [30, 40],
+      zoom: 2,
       minZoom: 2,
+      maxZoom: 7,
       worldCopyJump: true,
       scrollWheelZoom: false,
       dragging: true,
       tap: true,
     });
     this._tileLayer(map);
+
+    // 모든 사건 핀이 한 화면에 들어오도록 경계에 맞춰 축소.
+    // 컨테이너 크기가 아직 0일 수 있어, 크기를 다시 재고 여러 번 재시도한다.
+    const bounds = L.latLngBounds(events.map((e) => [e.lat, e.lng]));
+    function fitAll() {
+      map.invalidateSize();
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 4 });
+    }
+    // 레이아웃이 잡히는 시점마다 재조정(최초 렌더·탭 전환·폰트 로드 대비)
+    [60, 250, 600, 1200].forEach((ms) => setTimeout(fitAll, ms));
+    window.addEventListener("resize", () => map.invalidateSize());
 
     const markers = {};
     events.forEach((ev) => {
@@ -80,9 +92,9 @@ const WAR_MAP = {
       .sort((a, b) => a.order - b.order)
       .map((e) => [e.lat, e.lng]);
     L.polyline(path, {
-      color: "#ffd166",
-      weight: 2,
-      opacity: 0.5,
+      color: "#a23b2e",
+      weight: 2.5,
+      opacity: 0.6,
       dashArray: "6 8",
     }).addTo(map);
 
@@ -97,14 +109,13 @@ const WAR_MAP = {
       });
     }
 
+    // 선택한 핀을 강조하되, 세계지도 전체 시야는 유지(패닝하지 않음)
     function focus(id) {
       const entry = markers[id];
       if (!entry) return;
       setActive(id);
-      map.panTo([entry.event.lat, entry.event.lng], { animate: true });
     }
 
-    setTimeout(() => map.invalidateSize(), 200);
     return { map, markers, focus, setActive };
   },
 };
