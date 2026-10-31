@@ -26,6 +26,7 @@
     learnedMax: 0,       // 학습에서 마지막으로 본 사건 순번(진행도)
     orderDone: false,    // 순서 맞추기 완료 여부
     orderScore: 0,       // 순서 맞추기 맞힌 개수
+    reviewCleared: false,            // 복습(전체) 1회 이상 완료했는지
     reviewPool: REVIEW_QUIZ.slice(), // 현재 복습 세션에서 풀 문제들
     reviewIsRetry: false,            // 틀린 문제만 다시 푸는 세션인지
     reviewIndex: 0,      // 복습 현재 문항(풀 내 위치)
@@ -169,18 +170,29 @@
         el("br", {}),
         "사건의 순서를 복원한 뒤, 복습 임무로 기억을 점검해요.",
       ]),
-      el("div", { class: "hero-cta" }, [
-        el("button", { class: "btn btn-lg", type: "button", onclick: () => go("learn") },
-          "지도 조사 시작"),
-        el("button", { class: "btn btn-ghost btn-lg", type: "button", onclick: () => go("order") },
-          "순서 복원 바로가기"),
-      ]),
     ]);
 
+    // 임무 잠금 상태: 앞 단계를 완료해야 다음 단계가 열린다.
+    const learnDone = state.learnedMax >= SORTED.length;
+    const orderDone = state.orderDone;
+    const reviewDone = state.reviewCleared;
+
     const ops = el("div", { class: "ops-grid" }, [
-      opsCard("임무 01", "지도 조사", "세계지도의 번호 핀을 따라 8개 전장을 시간 순서대로 조사해요."),
-      opsCard("임무 02", "순서 복원", "뒤섞인 작전 보고서에 올바른 순번을 매겨 전쟁의 흐름을 복원해요."),
-      opsCard("임무 03", "복습 점검", "객관식·OX 문제로 핵심 정보를 다시 점검해요."),
+      opsCard({
+        step: "임무 01", title: "지도 조사",
+        desc: "세계지도의 번호 핀을 따라 8개 전장을 시간 순서대로 조사해요.",
+        route: "learn", unlocked: true, done: learnDone,
+      }),
+      opsCard({
+        step: "임무 02", title: "순서 복원",
+        desc: "뒤섞인 작전 보고서에 올바른 순번을 매겨 전쟁의 흐름을 복원해요.",
+        route: "order", unlocked: learnDone, done: orderDone,
+      }),
+      opsCard({
+        step: "임무 03", title: "복습 점검",
+        desc: "객관식·OX 문제로 핵심 정보를 다시 점검해요.",
+        route: "review", unlocked: orderDone, done: reviewDone,
+      }),
     ]);
 
     const mapWrap = el("div", { class: "home-map-wrap" }, [
@@ -201,11 +213,32 @@
     }, 0);
   }
 
-  function opsCard(step, title, desc) {
-    return el("div", { class: "ops-card" }, [
-      el("span", { class: "ops-step" }, step),
+  function opsCard(opt) {
+    const { step, title, desc, route, unlocked, done } = opt;
+    const state2 = done ? "done" : (unlocked ? "open" : "locked");
+
+    let btn;
+    if (!unlocked) {
+      btn = el("button", {
+        class: "ops-start locked", type: "button", disabled: true,
+        "aria-label": title + " 잠김 — 이전 임무를 먼저 완료하세요",
+      }, [el("span", { "aria-hidden": "true" }, "🔒 "), "잠김"]);
+    } else {
+      btn = el("button", {
+        class: "ops-start" + (done ? " again" : ""),
+        type: "button",
+        onclick: () => go(route),
+      }, done ? "다시 하기" : "시작");
+    }
+
+    return el("div", { class: "ops-card " + state2 }, [
+      el("div", { class: "ops-card-head" }, [
+        el("span", { class: "ops-step" }, step),
+        done ? el("span", { class: "ops-badge" }, "완료 ✓") : null,
+      ]),
       el("p", { class: "ops-card-title" }, title),
       el("p", { class: "ops-card-desc" }, desc),
+      btn,
     ]);
   }
 
@@ -535,6 +568,8 @@
     const total = pool.length;
     const score = state.reviewScore;
     const ratio = total ? score / total : 0;
+    // 전체 복습을 한 번이라도 끝내면 '복습 점검' 임무를 완료로 표시
+    if (!state.reviewIsRetry) state.reviewCleared = true;
     const shell = el("div", { class: "wrap" });
 
     // 이번 세션에서 틀린 문제 모으기

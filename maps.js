@@ -40,20 +40,30 @@ const WAR_MAP = {
      반환: { map, focus(id), setActive(id), markers } */
   build(container, events, onSelect) {
     const map = L.map(container, {
-      center: [30, 40],
+      center: [30, 90],
       zoom: 2,
       minZoom: 2,
       maxZoom: 7,
-      worldCopyJump: true,
+      worldCopyJump: false,
       scrollWheelZoom: false,
       dragging: true,
       tap: true,
     });
     this._tileLayer(map);
 
+    // --- 경도 보정(날짜변경선 문제 해결) ---
+    // 하와이(서경 -157)와 일본(동경 132)이 세계지도의 양 끝으로 갈라져
+    // 경로선이 지도를 가로지르는 혼란을 막는다.
+    // 유럽(음수~양수 소)을 기준으로, 서경 -30 미만(아메리카/태평양 동쪽)은
+    // +360 하여 유럽 → 일본 → 하와이가 왼쪽에서 오른쪽으로 연속되게 만든다.
+    function dispLng(lng) {
+      return lng < -30 ? lng + 360 : lng;
+    }
+    const latLng = (ev) => [ev.lat, dispLng(ev.lng)];
+
     // 모든 사건 핀이 한 화면에 들어오도록 경계에 맞춰 축소.
     // 컨테이너 크기가 아직 0일 수 있어, 크기를 다시 재고 여러 번 재시도한다.
-    const bounds = L.latLngBounds(events.map((e) => [e.lat, e.lng]));
+    const bounds = L.latLngBounds(events.map(latLng));
     function fitAll() {
       map.invalidateSize();
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 4 });
@@ -64,7 +74,7 @@ const WAR_MAP = {
 
     const markers = {};
     events.forEach((ev) => {
-      const mk = L.marker([ev.lat, ev.lng], {
+      const mk = L.marker(latLng(ev), {
         icon: this._numberIcon(ev.order, ev.color, false),
         keyboard: true,
         title: ev.order + ". " + ev.title,
@@ -90,7 +100,7 @@ const WAR_MAP = {
     const path = events
       .slice()
       .sort((a, b) => a.order - b.order)
-      .map((e) => [e.lat, e.lng]);
+      .map(latLng);
     L.polyline(path, {
       color: "#a23b2e",
       weight: 2.5,

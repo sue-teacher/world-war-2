@@ -298,7 +298,7 @@ html { scroll-behavior: smooth; }
   background: var(--rust); clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
 }
 
-.ops-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
+.ops-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); align-items: stretch; }
 .ops-card {
   background: var(--card);
   border: 2px solid var(--line);
@@ -306,17 +306,54 @@ html { scroll-behavior: smooth; }
   border-radius: var(--radius-sm);
   padding: var(--space-5);
   box-shadow: var(--shadow-1);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  display: flex; flex-direction: column;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
 }
 .ops-card:nth-child(2) { border-left-color: var(--navy); }
 .ops-card:nth-child(3) { border-left-color: var(--rust); }
-.ops-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+.ops-card.open:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+
+/* 잠긴 임무 — 흐리게, 상호작용 축소 */
+.ops-card.locked { opacity: 0.6; border-left-color: var(--line); background: var(--paper-2); }
+/* 완료 임무 — 올리브 강조 */
+.ops-card.done { border-left-color: var(--good); }
+
+.ops-card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .ops-step {
   font-family: var(--font-stencil); letter-spacing: 0.5px;
   color: var(--ink-faint); font-size: 0.95rem;
 }
+.ops-badge {
+  font-family: var(--font-stencil); font-size: 0.78rem; letter-spacing: 0.3px;
+  color: #fff; background: var(--good);
+  padding: 3px 10px; border-radius: 999px;
+}
 .ops-card-title { font-family: var(--font-head); font-size: 1.25rem; margin: var(--space-1) 0 var(--space-2); }
-.ops-card-desc { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
+.ops-card-desc { margin: 0 0 var(--space-4); font-size: 0.9rem; color: var(--ink-soft); flex: 1; }
+
+/* 임무 시작 버튼 */
+.ops-start {
+  align-self: flex-start;
+  border: 2px solid var(--olive-deep);
+  border-radius: var(--radius-sm);
+  padding: 9px 22px;
+  font-family: var(--font-stencil); font-size: 1rem; letter-spacing: 0.3px;
+  color: #fff; background: var(--olive); cursor: pointer;
+  box-shadow: 3px 3px 0 var(--olive-deep);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+.ops-card:nth-child(2) .ops-start { border-color: var(--navy-deep); background: var(--navy); box-shadow: 3px 3px 0 var(--navy-deep); }
+.ops-card:nth-child(3) .ops-start { border-color: var(--rust-deep); background: var(--rust); box-shadow: 3px 3px 0 var(--rust-deep); }
+.ops-start:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--olive-deep); }
+.ops-card:nth-child(2) .ops-start:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--navy-deep); }
+.ops-card:nth-child(3) .ops-start:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--rust-deep); }
+.ops-start:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+.ops-start:focus-visible { outline: none; box-shadow: var(--ring), 3px 3px 0 var(--olive-deep); }
+.ops-start.again { background: var(--card); color: var(--ink-soft); border-color: var(--line); box-shadow: 3px 3px 0 var(--line); }
+.ops-start.locked {
+  background: var(--paper-2); color: var(--ink-faint);
+  border: 2px dashed var(--line); box-shadow: none; cursor: not-allowed;
+}
 
 /* 홈 대형 지도 */
 .home-map-wrap {
