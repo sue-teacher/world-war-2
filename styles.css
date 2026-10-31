@@ -286,6 +286,8 @@ html { scroll-behavior: smooth; }
   margin: 0 0 var(--space-4); color: var(--ink);
 }
 .home-title .u { border-bottom: 6px solid var(--olive); padding-bottom: 2px; }
+/* 제목 줄바꿈: 데스크톱은 한 줄, 모바일에서만 줄바꿈 */
+.home-title .br-mobile { display: none; }
 .hero-desc {
   color: var(--ink-soft); max-width: 640px; margin: 0;
   font-size: 1.1rem;
@@ -722,9 +724,19 @@ html { scroll-behavior: smooth; }
 @media (max-width: 560px) {
   .topbar-name { display: none; }
   .steps { display: none; }
-  .home-title { font-size: 2.1rem; }
+  .home-title { font-size: 2rem; }
+  .home-title .br-mobile { display: inline; }
   .question-text { font-size: 1.15rem; }
-  .hero-brief::before { font-size: 0.7rem; padding: 5px 52px; }
   .wrap, .home { padding-left: var(--space-4); padding-right: var(--space-4); }
-  .hero-brief { padding: var(--space-6) var(--space-4); }
+  /* 모바일: 리본과 제목이 겹치지 않도록 상단 여백 확보 */
+  .hero-brief { padding: var(--space-5) var(--space-4); padding-top: 56px; }
+  /* 모바일 TOP SECRET 리본: 폭·위치를 다시 지정(좌상방 치우침 방지) */
+  .hero-brief::before {
+    top: 20px; right: -56px;
+    width: 180px;
+    font-size: 0.72rem; letter-spacing: 1.5px;
+    padding: 5px 0;
+  }
+  /* 리본과 겹치지 않게 상단 문구 오른쪽 여백 축소(제목은 리본 아래로 내려감) */
+  .hero-kicker { padding-right: 0; }
 }

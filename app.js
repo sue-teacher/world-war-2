@@ -97,8 +97,16 @@
   }
 
   /* ---------------- 라우팅 ---------------- */
+  // 화면 전환 시 항상 맨 위로. 렌더 직후·다음 프레임 모두에서 보장.
+  function scrollToTop() {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
   function go(route) {
     state.route = route;
+    scrollToTop();
     renderChrome();
     clear(stage);
     if (route === "home") renderHome();
@@ -106,10 +114,12 @@
     else if (route === "order") renderOrder();
     else if (route === "review") renderReview();
     else if (route === "result") renderResult();
-    window.scrollTo({ top: 0, behavior: "smooth" });
     stage.classList.remove("fade-in");
     void stage.offsetWidth;
     stage.classList.add("fade-in");
+    // 렌더로 레이아웃이 바뀐 뒤에도 한 번 더 상단 보장(지도 빌드 등 대비)
+    scrollToTop();
+    requestAnimationFrame(scrollToTop);
   }
 
   /* 상단바(학습 중에만 표시) 갱신 */
@@ -176,9 +186,11 @@
     const shell = el("div", { class: "home" });
 
     const hero = el("section", { class: "hero-brief" }, [
-      el("p", { class: "hero-kicker" }, "지수쌤과 작전브리핑 · 중학교 2학년 세계사"),
+      el("p", { class: "hero-kicker" }, "지수쌤과 작전브리핑"),
       el("h1", { class: "home-title" }, [
-        "세계지도로 보는 ",
+        "세계지도로 보는",
+        el("br", { class: "br-mobile" }),
+        " ",
         el("span", { class: "u" }, "제2차 세계대전"),
       ]),
       el("p", { class: "hero-desc" }, [
