@@ -694,18 +694,42 @@
       ]),
       el("p", { class: "result-msg" }, msg),
       el("div", { class: "result-actions" }, [
+        // 틀린 문제가 남아 있으면: 다시 풀기 / 모두 맞혔으면: 처음부터 다시 시작
         wrong.length > 0
           ? el("button", {
               class: "btn btn-rust", type: "button",
               onclick: () => startReview(wrong.slice(), true),
             }, "틀린 문제 다시 풀기 (" + wrong.length + ")")
-          : null,
+          : el("button", {
+              class: "btn btn-rust", type: "button",
+              onclick: restartAll,
+            }, "🔄 작전 브리핑 다시 시작하기"),
         el("button", { class: "btn btn-navy", type: "button", onclick: () => go("learn") }, "지도 다시 조사"),
         el("button", { class: "btn btn-ghost", type: "button", onclick: () => go("home") }, "지도실로"),
       ]),
     ]));
 
     stage.appendChild(shell);
+  }
+
+  // 작전 브리핑 전체 처음부터 다시 시작(모든 진행 상태 초기화 후 지도 조사로)
+  function restartAll() {
+    state.learnedMax = 0;
+    state.orderDone = false;
+    state.orderScore = 0;
+    state.reviewCleared = false;
+    state.reviewPool = REVIEW_QUIZ.slice();
+    state.reviewIsRetry = false;
+    state.reviewIndex = 0;
+    state.reviewScore = 0;
+    state.reviewAnswered = {};
+    // 순서 복원·지도 조사 로컬 상태 초기화
+    orderShuffled = null;
+    orderPicks = {};
+    orderGraded = false;
+    currentLearnId = null;
+    toast("작전 브리핑을 처음부터 다시 시작해요!", "good");
+    go("learn");
   }
 
   /* ---------------- 시작 ---------------- */
