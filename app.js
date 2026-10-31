@@ -138,7 +138,7 @@
     };
 
     clear(stepNav);
-    STEPS.forEach((s) => {
+    STEPS.forEach((s, i) => {
       const isCurrent =
         (s.key === "learn" && state.route === "learn") ||
         (s.key === "order" && state.route === "order") ||
@@ -155,11 +155,14 @@
         disabled: !isUnlocked,
         "aria-current": isCurrent ? "true" : "false",
         "aria-disabled": isUnlocked ? "false" : "true",
+        "aria-label": (i + 1) + "단계 " + s.label + (done ? " 완료" : "") + (isUnlocked ? "" : " 잠김"),
         title: isUnlocked ? "" : "이전 임무를 먼저 완료하세요",
         onclick: () => { if (isUnlocked) go(s.key); },
       }, [
-        el("span", { "aria-hidden": "true" }, isUnlocked ? s.emoji : "🔒"),
-        s.label + (done ? " ✓" : ""),
+        // 모바일: 번호 원형(1·2·3) / 데스크톱: 이모지도 함께
+        el("span", { class: "step-no", "aria-hidden": "true" }, isUnlocked ? String(i + 1) : "🔒"),
+        el("span", { class: "step-emoji", "aria-hidden": "true" }, isUnlocked ? s.emoji : ""),
+        el("span", { class: "step-label" }, s.label + (done ? " ✓" : "")),
       ]);
       stepNav.appendChild(pill);
     });

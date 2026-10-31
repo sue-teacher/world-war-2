@@ -208,6 +208,9 @@ html { scroll-behavior: smooth; }
   opacity: 0.5; cursor: not-allowed;
   border-style: dashed;
 }
+/* 데스크톱: 이모지 + 라벨 표시, 번호 숨김 */
+.step-no { display: none; }
+.step-emoji, .step-label { display: inline; }
 
 .score-badge {
   display: inline-flex; align-items: baseline; gap: 5px;
@@ -723,9 +726,21 @@ html { scroll-behavior: smooth; }
 }
 @media (max-width: 560px) {
   .topbar-name { display: none; }
-  .steps { display: none; }
   .home-title { font-size: 2rem; }
   .home-title .br-mobile { display: inline; }
+
+  /* 모바일 상단바: 임무 1·2·3을 번호 원형으로 표시 */
+  .steps { display: flex; gap: 6px; }
+  .step-label, .step-emoji { display: none; }
+  .step-no {
+    display: inline-grid; place-items: center;
+    width: 22px; height: 22px; font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .step-pill {
+    padding: 0; width: 34px; height: 34px;
+    justify-content: center; border-radius: 50%;
+  }
   .question-text { font-size: 1.15rem; }
   .wrap, .home { padding-left: var(--space-4); padding-right: var(--space-4); }
   /* 모바일: 리본과 제목이 겹치지 않도록 상단 여백 확보 */
