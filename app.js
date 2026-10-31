@@ -378,6 +378,8 @@
      순서 맞추기 (번호 선택)
      ============================================================ */
   let orderShuffled = null;
+  let orderPicks = {};      // 사용자가 고른 순번(id -> number) 기억
+  let orderGraded = false;  // 한 번 채점했는지(다시 들어와도 결과 복원)
 
   function renderOrder() {
     if (!orderShuffled) {
@@ -415,6 +417,8 @@
       for (let n = 1; n <= total; n++) {
         sel.appendChild(el("option", { value: String(n) }, String(n) + "번째"));
       }
+      // 이전에 고른 값이 있으면 복원(임무2로 다시 돌아와도 유지)
+      if (orderPicks[ev.id]) sel.value = String(orderPicks[ev.id]);
       // 연도 힌트: 기본 숨김, 버튼을 눌러야 보임(정답 노출 방지)
       const yearSpan = el("span", {
         class: "order-year-hint", id: "yh-" + ev.id, hidden: true,
@@ -459,9 +463,12 @@
     ]));
 
     stage.appendChild(shell);
+
+    // 이미 채점한 적이 있으면(임무2로 되돌아온 경우) 결과 화면을 그대로 복원
+    if (orderGraded) checkOrder(true);
   }
 
-  function checkOrder() {
+  function checkOrder(silent) {
     const total = orderShuffled.length;
     const picks = {};
     let allFilled = true;
@@ -475,6 +482,10 @@
       toast("모든 사건에 순서를 골라주세요!", "bad");
       return;
     }
+
+    // 고른 값 기억(다시 돌아와도 복원) + 채점함 표시
+    orderPicks = Object.assign({}, picks);
+    orderGraded = true;
 
     // 중복 선택 확인
     const used = Object.values(picks);
@@ -517,8 +528,8 @@
       box.appendChild(el("div", { style: "margin-top:14px;text-align:center;" }, [
         el("button", { class: "btn btn-rust", type: "button", onclick: () => go("review") }, "복습 임무 →"),
       ]));
-      toast("순서 완성! 잘했어요 🎉", "good");
-    } else {
+      if (!silent) toast("순서 완성! 잘했어요 🎉", "good");
+    } else if (!silent) {
       toast(correct + " / " + total + " 맞았어요", correct > total / 2 ? "good" : "bad");
     }
   }
@@ -690,7 +701,6 @@
             }, "틀린 문제 다시 풀기 (" + wrong.length + ")")
           : null,
         el("button", { class: "btn btn-navy", type: "button", onclick: () => go("learn") }, "지도 다시 조사"),
-        el("button", { class: "btn btn-ghost", type: "button", onclick: () => startReview(REVIEW_QUIZ.slice(), false) }, "전체 복습 다시"),
         el("button", { class: "btn btn-ghost", type: "button", onclick: () => go("home") }, "지도실로"),
       ]),
     ]));
