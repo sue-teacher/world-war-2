@@ -10,6 +10,11 @@
   const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
   const SORTED = EVENTS.slice().sort((a, b) => a.order - b.order);
 
+  // 지도 조사 완료 = 핵심 단어 입력 문제가 있는 모든 사건을 맞혔을 때
+  function allChecksPassed() {
+    return SORTED.every((e) => !e.check || state.checkPassed[e.id]);
+  }
+
   const stage = document.getElementById("stage");
   const topbar = document.getElementById("topbar");
   const stepNav = document.getElementById("stepNav");
@@ -24,6 +29,7 @@
   const state = {
     route: "home",
     learnedMax: 0,       // 학습에서 마지막으로 본 사건 순번(진행도)
+    checkPassed: {},     // 사건별 핵심 단어 입력 정답 여부 { [id]: true }
     orderDone: false,    // 순서 맞추기 완료 여부
     orderScore: 0,       // 순서 맞추기 맞힌 개수
     reviewCleared: false,            // 복습(전체) 1회 이상 완료했는지
@@ -129,7 +135,7 @@
     if (!showTop) return;
 
     // 단계 잠금 규칙(홈과 동일): 앞 단계를 완료해야 다음 단계가 열린다.
-    const learnDone = state.learnedMax >= SORTED.length;
+    const learnDone = allChecksPassed();
     const orderDone = state.orderDone;
     const unlocked = {
       learn: true,
@@ -176,7 +182,7 @@
 
     // 전체 진행도(3단계 기준)
     let prog = 0;
-    if (state.learnedMax >= SORTED.length) prog += 1;
+    if (allChecksPassed()) prog += 1;
     if (state.orderDone) prog += 1;
     if (state.route === "result") prog += 1;
     progressFill.style.width = (prog / STEPS.length) * 100 + "%";
@@ -204,7 +210,7 @@
     ]);
 
     // 임무 잠금 상태: 앞 단계를 완료해야 다음 단계가 열린다.
-    const learnDone = state.learnedMax >= SORTED.length;
+    const learnDone = allChecksPassed();
     const orderDone = state.orderDone;
     const reviewDone = state.reviewCleared;
 
@@ -291,7 +297,7 @@
       el("div", { class: "map-panel" }, [
         el("div", { class: "osm-map", id: "learnMap" }),
         el("div", { class: "map-guide-row" }, [
-          el("span", { class: "map-guide" }, "번호 핀을 누르거나 ‹ › 버튼으로 순서대로 조사하세요"),
+          el("span", { class: "map-guide" }, "사건을 읽고 핵심 단어를 입력하면 다음으로 넘어가요"),
           el("button", {
             class: "map-reset-btn", type: "button",
             onclick: () => learnMapApi && learnMapApi.resetView(),
@@ -357,6 +363,20 @@
     ev.points.forEach((pt) => ul.appendChild(el("li", {}, el("span", {}, pt))));
     body.appendChild(ul);
 
+    // 다음 버튼(정답 전까지 비활성). nav보다 먼저 만들어 입력 채점에서 참조.
+    const nextBtn = isLast
+      ? el("button", { class: "btn btn-rust", type: "button", onclick: () => go("order") }, "순서 복원 →")
+      : el("button", { class: "btn btn-navy", type: "button", onclick: () => next && selectEvent(next.id, true) }, "다음 ›");
+
+    // 핵심 단어 입력 채점 영역
+    if (ev.check) {
+      body.appendChild(buildCheckBlock(ev, nextBtn));
+      // 이미 맞힌 사건이면 다음 버튼 열림, 아니면 잠금
+      if (!state.checkPassed[ev.id]) {
+        nextBtn.disabled = true;
+      }
+    }
+
     const nav = el("div", { class: "brief-nav" }, [
       el("button", {
         class: "back-link",
@@ -365,13 +385,85 @@
         onclick: () => prev && selectEvent(prev.id, true),
       }, "‹ 이전"),
       el("span", { class: "brief-counter" }, (idx + 1) + " / " + SORTED.length),
-      isLast
-        ? el("button", { class: "btn btn-rust", type: "button", onclick: () => go("order") }, "순서 복원 →")
-        : el("button", { class: "btn btn-navy", type: "button", onclick: () => next && selectEvent(next.id, true) }, "다음 ›"),
+      nextBtn,
     ]);
 
     const panelCard = el("div", { class: "brief" }, [head, body, nav]);
     panel.appendChild(panelCard);
+  }
+
+  // 정답 비교: 공백 제거 + 소문자화로 느슨하게 비교
+  function normalizeText(s) {
+    return String(s || "").replace(/\s+/g, "").toLowerCase();
+  }
+
+  // 사건 핵심 단어 입력 채점 블록
+  function buildCheckBlock(ev, nextBtn) {
+    const passed = !!state.checkPassed[ev.id];
+
+    const wrap = el("div", { class: "check-block" });
+    wrap.appendChild(el("p", { class: "check-q" }, [
+      el("span", { class: "check-q-tag", "aria-hidden": "true" }, "직접 입력"),
+      el("span", {}, ev.check.question),
+    ]));
+
+    const input = el("input", {
+      class: "check-input",
+      type: "text",
+      autocomplete: "off",
+      placeholder: "핵심 단어를 입력하세요",
+      "aria-label": ev.check.question,
+      value: passed ? ev.check.answers[0] : "",
+      disabled: passed,
+    });
+
+    const feedback = el("p", { class: "check-feedback", role: "status", "aria-live": "polite" });
+    if (passed) {
+      feedback.classList.add("good");
+      feedback.textContent = "✔ 정답! 다음으로 넘어갈 수 있어요.";
+    }
+
+    const submitBtn = el("button", {
+      class: "btn btn-navy check-submit", type: "button",
+      disabled: passed,
+    }, passed ? "정답 ✓" : "확인");
+
+    function grade() {
+      if (state.checkPassed[ev.id]) return;
+      const val = normalizeText(input.value);
+      if (!val) {
+        feedback.className = "check-feedback bad";
+        feedback.textContent = "단어를 입력해 주세요.";
+        return;
+      }
+      const ok = ev.check.answers.some((a) => normalizeText(a) === val);
+      if (ok) {
+        state.checkPassed[ev.id] = true;
+        input.disabled = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "정답 ✓";
+        feedback.className = "check-feedback good";
+        feedback.textContent = "✔ 정답! 다음으로 넘어갈 수 있어요.";
+        if (nextBtn) nextBtn.disabled = false;
+        renderChrome();
+        toast("정답!", "good");
+      } else {
+        feedback.className = "check-feedback bad";
+        feedback.textContent = "✕ 다시 생각해 보세요. 힌트: " + ev.check.hint;
+        input.focus();
+        input.select();
+        toast("다시 시도해 보세요", "bad");
+      }
+    }
+
+    submitBtn.addEventListener("click", grade);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); grade(); }
+    });
+
+    wrap.appendChild(el("div", { class: "check-row" }, [input, submitBtn]));
+    wrap.appendChild(feedback);
+    return wrap;
   }
 
   /* ============================================================
@@ -715,6 +807,7 @@
   // 작전 브리핑 전체 처음부터 다시 시작(모든 진행 상태 초기화 후 지도 조사로)
   function restartAll() {
     state.learnedMax = 0;
+    state.checkPassed = {};
     state.orderDone = false;
     state.orderScore = 0;
     state.reviewCleared = false;
