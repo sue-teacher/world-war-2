@@ -118,6 +118,15 @@
     topbar.hidden = !showTop;
     if (!showTop) return;
 
+    // 단계 잠금 규칙(홈과 동일): 앞 단계를 완료해야 다음 단계가 열린다.
+    const learnDone = state.learnedMax >= SORTED.length;
+    const orderDone = state.orderDone;
+    const unlocked = {
+      learn: true,
+      order: learnDone,
+      review: orderDone,
+    };
+
     clear(stepNav);
     STEPS.forEach((s) => {
       const isCurrent =
@@ -125,16 +134,23 @@
         (s.key === "order" && state.route === "order") ||
         (s.key === "review" && (state.route === "review" || state.route === "result"));
       let done = false;
-      if (s.key === "learn") done = state.learnedMax >= SORTED.length;
-      if (s.key === "order") done = state.orderDone;
+      if (s.key === "learn") done = learnDone;
+      if (s.key === "order") done = orderDone;
       if (s.key === "review") done = state.route === "result";
 
+      const isUnlocked = unlocked[s.key];
       const pill = el("button", {
-        class: "step-pill" + (done ? " done" : ""),
+        class: "step-pill" + (done ? " done" : "") + (isUnlocked ? "" : " locked"),
         type: "button",
+        disabled: !isUnlocked,
         "aria-current": isCurrent ? "true" : "false",
-        onclick: () => go(s.key),
-      }, [el("span", { "aria-hidden": "true" }, s.emoji), s.label + (done ? " ✓" : "")]);
+        "aria-disabled": isUnlocked ? "false" : "true",
+        title: isUnlocked ? "" : "이전 임무를 먼저 완료하세요",
+        onclick: () => { if (isUnlocked) go(s.key); },
+      }, [
+        el("span", { "aria-hidden": "true" }, isUnlocked ? s.emoji : "🔒"),
+        s.label + (done ? " ✓" : ""),
+      ]);
       stepNav.appendChild(pill);
     });
 
@@ -286,7 +302,7 @@
     }, 0);
   }
 
-  function selectEvent(id) {
+  function selectEvent(id, scrollTop) {
     currentLearnId = id;
     const ev = EVENT_BY_ID[id];
     if (!ev) return;
@@ -295,6 +311,8 @@
     if (learnMapApi) learnMapApi.focus(id, true);
     renderEventPanel(ev);
     renderChrome();
+    // 이전/다음 버튼으로 넘길 때는 화면 맨 위로 스크롤
+    if (scrollTop) window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function renderEventPanel(ev) {
@@ -329,12 +347,12 @@
         class: "back-link",
         type: "button",
         disabled: !prev,
-        onclick: () => prev && selectEvent(prev.id),
+        onclick: () => prev && selectEvent(prev.id, true),
       }, "‹ 이전"),
       el("span", { class: "brief-counter" }, (idx + 1) + " / " + SORTED.length),
       isLast
         ? el("button", { class: "btn btn-rust", type: "button", onclick: () => go("order") }, "순서 복원 →")
-        : el("button", { class: "btn btn-navy", type: "button", onclick: () => next && selectEvent(next.id) }, "다음 ›"),
+        : el("button", { class: "btn btn-navy", type: "button", onclick: () => next && selectEvent(next.id, true) }, "다음 ›"),
     ]);
 
     const panelCard = el("div", { class: "brief" }, [head, body, nav]);

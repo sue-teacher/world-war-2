@@ -202,8 +202,12 @@ html { scroll-behavior: smooth; }
   color: #fff; background: var(--navy); border-color: var(--navy-deep);
 }
 .step-pill.done { color: var(--good); border-color: var(--good); }
-.step-pill:hover:not([aria-current="true"]) { color: var(--ink); border-color: var(--ink-soft); }
+.step-pill:hover:not([aria-current="true"]):not(.locked) { color: var(--ink); border-color: var(--ink-soft); }
 .step-pill:focus-visible { outline: none; box-shadow: var(--ring); }
+.step-pill.locked {
+  opacity: 0.5; cursor: not-allowed;
+  border-style: dashed;
+}
 
 .score-badge {
   display: inline-flex; align-items: baseline; gap: 5px;
