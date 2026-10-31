@@ -160,7 +160,7 @@
     const shell = el("div", { class: "home" });
 
     const hero = el("section", { class: "hero-brief" }, [
-      el("p", { class: "hero-kicker" }, "작전 브리핑 · 중학교 2학년 세계사"),
+      el("p", { class: "hero-kicker" }, "지수쌤과 작전브리핑 · 중학교 2학년 세계사"),
       el("h1", { class: "home-title" }, [
         "세계지도로 보는 ",
         el("span", { class: "u" }, "제2차 세계대전"),
@@ -208,8 +208,8 @@
     stage.appendChild(shell);
 
     setTimeout(() => {
-      const m = WAR_MAP.build(document.getElementById("homeMap"), SORTED, () => go("learn"));
-      m.map.dragging.disable();
+      // 홈 지도도 마우스 드래그로 이동 가능(build에서 dragging: true)
+      WAR_MAP.build(document.getElementById("homeMap"), SORTED, () => go("learn"));
     }, 0);
   }
 
@@ -259,7 +259,13 @@
     const layout = el("div", { class: "learn-layout" }, [
       el("div", { class: "map-panel" }, [
         el("div", { class: "osm-map", id: "learnMap" }),
-        el("p", { class: "map-guide" }, "지도의 번호 핀을 누르거나 ‹ › 버튼으로 순서대로 조사하세요"),
+        el("div", { class: "map-guide-row" }, [
+          el("span", { class: "map-guide" }, "번호 핀을 누르거나 ‹ › 버튼으로 순서대로 조사하세요"),
+          el("button", {
+            class: "map-reset-btn", type: "button",
+            onclick: () => learnMapApi && learnMapApi.resetView(),
+          }, "🌍 전체 지도 보기"),
+        ]),
       ]),
       el("div", { class: "brief-col", id: "eventPanel" }),
     ]);
@@ -267,10 +273,16 @@
     stage.appendChild(shell);
 
     setTimeout(() => {
-      learnMapApi = WAR_MAP.build(document.getElementById("learnMap"), SORTED, (ev) => selectEvent(ev.id));
-      // 처음 진입 시 첫 사건 또는 이어보기
+      learnMapApi = WAR_MAP.build(
+        document.getElementById("learnMap"),
+        SORTED,
+        (ev) => selectEvent(ev.id),
+        { fitWorld: false }
+      );
+      // 처음 진입 시 첫 사건 또는 이어보기. 지도 크기 측정 후 확대되도록 약간 지연.
       const startId = currentLearnId || SORTED[0].id;
-      selectEvent(startId);
+      learnMapApi.map.invalidateSize();
+      setTimeout(() => selectEvent(startId), 120);
     }, 0);
   }
 
@@ -279,7 +291,8 @@
     const ev = EVENT_BY_ID[id];
     if (!ev) return;
     state.learnedMax = Math.max(state.learnedMax, ev.order);
-    if (learnMapApi) learnMapApi.focus(id);
+    // 사건 선택 시 해당 지역으로 확대·이동
+    if (learnMapApi) learnMapApi.focus(id, true);
     renderEventPanel(ev);
     renderChrome();
   }
@@ -343,9 +356,18 @@
       el("button", { class: "back-link", type: "button", onclick: () => go("learn") }, "← 지도 조사"),
     ]));
 
+    // instruction은 배열(여러 줄) 또는 문자열(한 줄) 모두 지원
+    const instrLines = Array.isArray(ORDER_QUIZ.instruction)
+      ? ORDER_QUIZ.instruction
+      : [ORDER_QUIZ.instruction];
+    const instrChildren = [];
+    instrLines.forEach((line, i) => {
+      if (i > 0) instrChildren.push(el("br", {}));
+      instrChildren.push(line);
+    });
     shell.appendChild(el("div", { class: "quiz-head" }, [
       el("h2", {}, ORDER_QUIZ.title),
-      el("p", {}, ORDER_QUIZ.instruction),
+      el("p", {}, instrChildren),
     ]));
 
     const total = orderShuffled.length;
@@ -360,11 +382,31 @@
       for (let n = 1; n <= total; n++) {
         sel.appendChild(el("option", { value: String(n) }, String(n) + "번째"));
       }
+      // 연도 힌트: 기본 숨김, 버튼을 눌러야 보임(정답 노출 방지)
+      const yearSpan = el("span", {
+        class: "order-year-hint", id: "yh-" + ev.id, hidden: true,
+      }, ev.year + "년");
+      const hintBtn = el("button", {
+        class: "order-hint-btn", type: "button",
+        "aria-expanded": "false",
+        "aria-controls": "yh-" + ev.id,
+        onclick: (e) => {
+          const btn = e.currentTarget;
+          const shown = !yearSpan.hidden;
+          yearSpan.hidden = shown;
+          btn.setAttribute("aria-expanded", shown ? "false" : "true");
+          btn.textContent = shown ? "💡 연도 힌트" : "🙈 힌트 숨기기";
+        },
+      }, "💡 연도 힌트");
+
       const card = el("div", { class: "order-card", id: "card-" + ev.id }, [
         el("span", { class: "order-card-emoji", "aria-hidden": "true" }, ev.emoji),
         el("div", { class: "order-card-body" }, [
           el("p", { class: "order-card-title" }, ev.title),
-          el("p", { class: "order-card-place" }, ev.year + "년 · " + ev.place),
+          el("p", { class: "order-card-place" }, [
+            ev.place,
+            el("span", { class: "order-hint-wrap" }, [hintBtn, yearSpan]),
+          ]),
         ]),
         el("span", { class: "order-result-icon", id: "icon-" + ev.id }, ""),
         el("div", { class: "order-select-wrap" }, [
@@ -415,6 +457,11 @@
       card.classList.add(ok ? "ok" : "ng");
       icon.textContent = ok ? "✅" : "❌";
       sel.disabled = false;
+      // 채점 후에는 연도를 공개(확인용)하고 힌트 버튼은 숨김
+      const yh = document.getElementById("yh-" + ev.id);
+      if (yh) yh.hidden = false;
+      const hb = card.querySelector(".order-hint-btn");
+      if (hb) hb.hidden = true;
       if (ok) correct++;
     });
 

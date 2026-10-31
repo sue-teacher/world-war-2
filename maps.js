@@ -38,7 +38,8 @@ const WAR_MAP = {
   /* 세계지도 생성 후 각 사건 마커를 추가.
      onSelect(event) : 마커 클릭 시 호출되는 콜백
      반환: { map, focus(id), setActive(id), markers } */
-  build(container, events, onSelect) {
+  build(container, events, onSelect, options) {
+    const opts = options || {};
     const map = L.map(container, {
       center: [30, 90],
       zoom: 2,
@@ -64,9 +65,12 @@ const WAR_MAP = {
     // 모든 사건 핀이 한 화면에 들어오도록 경계에 맞춰 축소.
     // 컨테이너 크기가 아직 0일 수 있어, 크기를 다시 재고 여러 번 재시도한다.
     const bounds = L.latLngBounds(events.map(latLng));
+    // fitWorld가 false면(학습 지도) 전체 맞춤을 반복하지 않고 크기만 재조정.
+    // focus()가 선택 지역 확대를 담당한다.
+    const fitWorld = opts.fitWorld !== false;
     function fitAll() {
       map.invalidateSize();
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 4 });
+      if (fitWorld) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 4 });
     }
     // 레이아웃이 잡히는 시점마다 재조정(최초 렌더·탭 전환·폰트 로드 대비)
     [60, 250, 600, 1200].forEach((ms) => setTimeout(fitAll, ms));
@@ -93,7 +97,8 @@ const WAR_MAP = {
         }
       });
       mk.addTo(map);
-      markers[ev.id] = { marker: mk, event: ev };
+      // 날짜변경선 보정이 반영된 표시용 좌표도 저장(확대 이동에 사용)
+      markers[ev.id] = { marker: mk, event: ev, pos: latLng(ev) };
     });
 
     // 사건들을 잇는 경로선(학습 순서 시각화)
@@ -119,14 +124,22 @@ const WAR_MAP = {
       });
     }
 
-    // 선택한 핀을 강조하되, 세계지도 전체 시야는 유지(패닝하지 않음)
-    function focus(id) {
+    // 선택한 핀 강조. zoomTo가 true면 해당 지역으로 부드럽게 확대·이동.
+    function focus(id, zoomTo) {
       const entry = markers[id];
       if (!entry) return;
       setActive(id);
+      if (zoomTo) {
+        map.flyTo(entry.pos, 5, { duration: 0.8 });
+      }
     }
 
-    return { map, markers, focus, setActive };
+    // 전체 사건이 보이도록 되돌리기(세계 시야)
+    function resetView() {
+      map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 4, duration: 0.8 });
+    }
+
+    return { map, markers, focus, setActive, resetView };
   },
 };
 

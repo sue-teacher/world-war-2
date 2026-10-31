@@ -283,9 +283,11 @@ html { scroll-behavior: smooth; }
 }
 .home-title .u { border-bottom: 6px solid var(--olive); padding-bottom: 2px; }
 .hero-desc {
-  color: var(--ink-soft); max-width: 640px; margin: 0 0 var(--space-5);
+  color: var(--ink-soft); max-width: 640px; margin: 0;
   font-size: 1.1rem;
 }
+/* 히어로 박스의 마지막 요소는 하단 여백 제거(상·하 공백 균형) */
+.hero-brief > :last-child { margin-bottom: 0; }
 .hero-cta { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 
 /* 작전 3단계 — 서류 탭 느낌 */
@@ -418,11 +420,28 @@ html { scroll-behavior: smooth; }
   border-radius: var(--radius-sm);
   overflow: hidden; z-index: 0;
 }
-.leaflet-container { font-family: inherit; background: #acbbd0; }
+.leaflet-container { font-family: inherit; background: #acbbd0; cursor: grab; }
+.leaflet-container:active,
+.leaflet-dragging .leaflet-container { cursor: grabbing; }
+/* 마커 위에서는 클릭 가능함을 표시 */
+.leaflet-marker-icon { cursor: pointer; }
 .map-guide {
-  margin: 8px 4px 2px; font-size: 0.82rem; color: var(--ink-faint);
-  text-align: center; font-family: var(--font-stencil); letter-spacing: 1px;
+  font-size: 0.82rem; color: var(--ink-faint);
+  font-family: var(--font-stencil); letter-spacing: 0.3px;
 }
+.map-guide-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); margin: 8px 4px 2px; flex-wrap: wrap;
+}
+.map-reset-btn {
+  font-family: var(--font-stencil); font-size: 0.85rem; letter-spacing: 0.2px;
+  color: var(--navy); background: var(--card);
+  border: 1.5px solid var(--navy); border-radius: 999px;
+  padding: 5px 14px; cursor: pointer; flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.map-reset-btn:hover { background: var(--navy); color: #fff; }
+.map-reset-btn:focus-visible { outline: none; box-shadow: var(--ring); }
 
 /* 번호 핀 — 군용 태그 */
 .war-pin { background: transparent; border: none; }
@@ -528,9 +547,26 @@ html { scroll-behavior: smooth; }
 .order-card-body { flex: 1; min-width: 0; }
 .order-card-title { font-weight: 800; margin: 0; font-size: 1.05rem; }
 .order-card-place {
-  font-size: 0.8rem; color: var(--ink-faint); margin: 2px 0 0;
-  font-family: var(--font-stencil); letter-spacing: 1px;
+  font-size: 0.85rem; color: var(--ink-faint); margin: 4px 0 0;
+  font-family: var(--font-stencil); letter-spacing: 0.3px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
+.order-hint-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.order-hint-btn {
+  font-family: inherit; font-size: 0.8rem; letter-spacing: 0.2px;
+  color: var(--navy); background: var(--card);
+  border: 1.5px dashed var(--navy); border-radius: 999px;
+  padding: 3px 11px; cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.order-hint-btn:hover { background: var(--navy); color: #fff; }
+.order-hint-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+.order-year-hint {
+  font-weight: 400; color: var(--rust);
+  background: var(--bad-bg); padding: 3px 10px; border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.order-year-hint[hidden] { display: none; }
 .order-select-wrap { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
 .order-select-label {
   font-size: 0.72rem; color: var(--ink-faint); font-weight: 400;
