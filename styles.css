@@ -753,7 +753,9 @@ html { scroll-behavior: smooth; }
    반응형
    ============================================================ */
 @media (max-width: 920px) {
-  .learn-layout { grid-template-columns: 1fr; }
+  /* minmax(0,1fr): 그리드 칸이 내용(입력줄 등)보다 커지지 않게 해 가로 넘침 방지 */
+  .learn-layout { grid-template-columns: minmax(0, 1fr); }
+  .map-panel, .brief-col { min-width: 0; }
   .map-panel { position: static; }
   .osm-map { height: 52vh; min-height: 360px; }
   .ops-grid { grid-template-columns: 1fr; }
@@ -791,9 +793,18 @@ html { scroll-behavior: smooth; }
   .question-card, .order-grid, .order-card, .hero-brief, .ops-card {
     max-width: 100%;
   }
-  .learn-layout { grid-template-columns: 1fr; }  /* 1단 강제(안전) */
+  /* 1단 강제 + minmax(0,1fr)로 그리드 칸이 내용보다 커지지 않게(넘침 방지) */
+  .learn-layout { grid-template-columns: minmax(0, 1fr); }
+  .map-panel, .brief-col { min-width: 0; }
   .map-panel { position: static; }
   .osm-map { height: 48vh; min-height: 300px; }
+  /* 직접입력 퀴즈가 카드를 넘지 않도록 폭 가둠 + 질문 줄바꿈 */
+  .brief-body, .check-block { max-width: 100%; }
+  .check-block { padding: var(--space-3); }
+  .check-q { word-break: keep-all; }
+  .check-row { flex-wrap: wrap; }       /* 좁으면 버튼이 아랫줄로 */
+  .check-input { width: 100%; min-width: 0; }
+  .check-submit { width: 100%; }        /* 줄바꿈 시 버튼은 한 줄 전체 */
   /* 모바일: 리본과 제목이 겹치지 않도록 상단 여백 확보 */
   .hero-brief { padding: var(--space-5) var(--space-4); padding-top: 56px; }
   /* 모바일 TOP SECRET 리본: 폭·위치를 다시 지정(좌상방 치우침 방지) */
